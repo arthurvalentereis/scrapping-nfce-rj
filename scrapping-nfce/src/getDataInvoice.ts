@@ -1,18 +1,20 @@
 import puppeteer, { TimeoutError } from "puppeteer"
 import { puppeteerArgs } from "./puppeteerArgs"
 
-type Nfce = {
-	CNPJ?: string;
-	product_details?:[{
-		description?: string | null;
-		code?: string | null;
-		amount?: string | null;
-		unity?: string | null;
-		unity_value?: string | null;
-		total_value?: string | null;
-	}] 
-
+interface Products {
+	description?: string;
+	code?: string;
+	amount?: string;
+	unity?: string;
+	unity_value?: string;
+	total_value?: string;
 }
+
+interface Nfce  {
+	Cnpj: string;
+	CorporateName: string;
+	Items?: Products[];
+} 
 export async function getDataInvoice(invoiceNumber: string) {
 	
 	try
@@ -39,6 +41,10 @@ export async function getDataInvoice(invoiceNumber: string) {
 			"#u20",
 			(el) => (el as HTMLElement).innerText
 		)
+		const Cnpj = await page.$eval(
+			"#u20",
+			(el) => (el.nextElementSibling as HTMLElement).innerText
+		)
 		
 
 		let product_details = await page.evaluate(() => {
@@ -50,12 +56,12 @@ export async function getDataInvoice(invoiceNumber: string) {
 				// Loop through each episode and get their details 
 				let products_info = product_list
 					.map(product => {
-						let description = product.querySelector(".txtTit")?.textContent;
-						let code = product.querySelector(".RCod")?.textContent;
-						let amount = product.querySelector(".Rqtd")?.textContent;
-						let unity = product.querySelector(".RUN")?.textContent;
-						let unity_value = product.querySelector(".RvlUnit")?.textContent;
-						let total_value = product.querySelector(".txtTit noWrap .valor")?.textContent;
+						let description = product.querySelector(".txtTit")?.textContent?.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+						let code = product.querySelector(".RCod")?.textContent?.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+						let amount = product.querySelector(".Rqtd")?.textContent?.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+						let unity = product.querySelector(".RUN")?.textContent?.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+						let unity_value = product.querySelector(".RvlUnit")?.textContent?.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
+						let total_value = product.querySelector(".txtTit noWrap .valor")?.textContent?.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim();
 						return { description, code, amount,unity,unity_value,total_value };
 					}
 				);
@@ -64,9 +70,13 @@ export async function getDataInvoice(invoiceNumber: string) {
 			}
 		});
 		
-		let NotaFiscal: Nfce = { CNPJ: CorporateName }
-		// NotaFiscal.product_details = product_details;
-		console.log(product_details)
+		let NotaFiscal: Nfce = { 
+			Cnpj: Cnpj,
+			CorporateName: CorporateName,
+			Items : product_details
+		}
+		
+		console.log(NotaFiscal)
 				
 		console.timeEnd(invoiceNumber)
 
